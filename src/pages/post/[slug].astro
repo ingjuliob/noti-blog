@@ -1,0 +1,73 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { createClient } from '@sanity/client';
+import { PortableText } from '@portabletext/react';
+
+// Initialize the Sanity client using the same environment variables.
+const client = createClient({
+  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID,
+  dataset: import.meta.env.PUBLIC_SANITY_DATASET || 'production',
+  apiVersion: import.meta.env.PUBLIC_SANITY_API_VERSION || '2023-05-03',
+  useCdn: true,
+});
+
+/**
+ * Tell Astro which dynamic routes to pre-render at build time. We fetch
+ * all defined slugs for posts from Sanity. Without this, dynamic pages
+ * will not be generated and visiting them will 404 on a static site.
+ */
+export async function getStaticPaths() {
+  const slugs = await client.fetch(
+    '*[_type == "post" && defined(slug.current)].slug.current'
+  );
+  return slugs.map((slug) => ({ params: { slug } }));
+}
+
+// Extract the slug from the URL params.
+const { slug } = Astro.params;
+
+// Fetch a single post by slug. We request the body content which is stored
+// as Portable Text in Sanity.
+const post = await client.fetch(
+  '*[_type == "post" && slug.current == $slug][0]{\n    title,\n    publishedAt,\n    body,\n    excerpt,\n    coverImage{asset->{url}, alt},\n    sourceName,\n    sourceUrl\n  }',
+  { slug }
+);
+
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  return date.toLocaleString('es-AR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+---
+<Layout title={post?.title}>
+  {post ? (
+    <article class="prose prose-lg max-w-none">
+      <h1 class="mb-2 text-3xl font-bold">{post.title}</h1>
+      {post.publishedAt && (
+        <p class="text-sm text-gray-500 mb-4">{formatDate(post.publishedAt)}</p>
+      )}
+      {post.coverImage?.asset?.url && (
+        <img
+          src={post.coverImage.asset.url}
+          alt={post.coverImage.alt || post.title}
+          class="mb-4 w-full max-h-96 object-cover rounded-lg shadow"
+        />
+      )}
+      {post.body && (
+        <PortableText value={post.body} components={{}} />
+      )}
+      {post.sourceName && post.sourceUrl && (
+        <p class="mt-6 text-sm text-gray-600">
+          Fuente:
+          <a href={post.sourceUrl} class="underline ml-1">
+            {post.sourceName}
+          </a>
+        </p>
+      )}
+    </article>
+  ) : (
+    <p>Artículo no encontrado.</p>
+  )}
+</Layout>
