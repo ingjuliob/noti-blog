@@ -1,0 +1,32 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PostCard from '../components/PostCard.astro';
+import { createClient } from '@sanity/client';
+
+// Initialize the Sanity client using environment variables. See `.env.example`.
+const client = createClient({
+  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID,
+  dataset: import.meta.env.PUBLIC_SANITY_DATASET || 'production',
+  apiVersion: import.meta.env.PUBLIC_SANITY_API_VERSION || '2023-05-03',
+  useCdn: true,
+});
+
+// Fetch all posts ordered by publication date (descending).
+const posts = await client.fetch(`*[_type == "post"] | order(publishedAt desc) {
+  _id,
+  title,
+  slug,
+  publishedAt,
+  excerpt,
+  coverImage{asset->{url}, alt},
+  sourceName,
+  sourceUrl
+}`);
+---
+<Layout>
+  <h1 class="text-3xl font-bold mb-6">Últimas noticias</h1>
+  {posts.length === 0 && <p>No hay artículos publicados todavía.</p>}
+  {posts.map((post) => (
+    <PostCard post={post} />
+  ))}
+</Layout>
