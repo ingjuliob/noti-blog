@@ -1,0 +1,38 @@
+---
+/**
+ * Component used to display a summary of a single post in the list.
+ * It expects a `post` object returned from Sanity with fields:
+ * { title, slug: { current }, publishedAt, excerpt, coverImage { asset: { url }, alt } }
+ */
+export interface Props {
+  post: Record<string, any>;
+}
+
+const { post } = Astro.props;
+
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  // Use locale Argentinian Spanish to format date and time.
+  return date.toLocaleString('es-AR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+---
+<article class="mb-8">
+  <h2 class="text-2xl font-semibold mb-1">
+    <a href={`/post/${post.slug?.current}`}>{post.title}</a>
+  </h2>
+  {post.publishedAt && (
+    <p class="text-sm text-gray-500">{formatDate(post.publishedAt)}</p>
+  )}
+  {post.excerpt && <p class="mt-2">{post.excerpt}</p>}
+  {post.coverImage?.asset?.url && (
+    <img
+      src={post.coverImage.asset.url}
+      alt={post.coverImage.alt || post.title}
+      class="mt-4 w-full max-h-72 object-cover rounded-lg shadow-sm"
+      loading="lazy"
+    />
+  )}
+</article>
